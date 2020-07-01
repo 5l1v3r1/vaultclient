@@ -1249,6 +1249,12 @@ void vcPOI::GenerateLineFillPolygon()
 {
   if (m_line.numPoints >= 3)
   {
+    udDouble3 *pPoints;
+    m_line.pPoints;
+
+    vcCDT_ProcessOrignal(m_line.pPoints, m_line.numPoints);
+
+    /*
     udDouble3 min = m_line.pPoints[0];
     udDouble3 max = m_line.pPoints[0];
 
@@ -1293,6 +1299,7 @@ void vcPOI::GenerateLineFillPolygon()
 
     udFree(pVerts);
     udFree(pIndices);
+    */
   }
 }
 

@@ -15,6 +15,7 @@
 
 #include "imgui.h"
 #include "imgui_ex/vcImGuiSimpleWidgets.h"
+#include "vcCDT.h"
 
 const char *vcFRVMStrings[] =
 {
@@ -1249,10 +1250,36 @@ void vcPOI::GenerateLineFillPolygon()
 {
   if (m_line.numPoints >= 3)
   {
-    udDouble3 *pPoints;
-    m_line.pPoints;
+    udDouble2 min, max;
+    std::vector<udDouble2> trianglePointList;
 
-    vcCDT_ProcessOrignal(m_line.pPoints, m_line.numPoints);
+    vcCDT_ProcessOrignal(m_line.pPoints, m_line.numPoints, std::vector< std::pair<const udDouble3 *, size_t> >(), min, max, &trianglePointList);
+
+    int numPoints = (int)trianglePointList.size();
+
+    vcP3N3UV2Vertex *pVerts = udAllocType(vcP3N3UV2Vertex, numPoints, udAF_Zero);
+    uint32_t *pIndices = udAllocType(uint32_t, numPoints, udAF_Zero);
+
+    udFloat3 defaultNormal = udFloat3::create(0.0f, 0.0f, 1.0f);
+    udFloat2 defaultUV = udFloat2::create(0.0f, 0.0f);
+
+    udFloat3 offset = udFloat3::create(m_line.pPoints[0]);
+    
+    for (int64_t i = 0; i < (int64_t)trianglePointList.size(); ++i)
+    {
+      udFloat3 pos = udFloat3::create((float)trianglePointList[i].x, (float)trianglePointList[i].y, 0) + offset;
+
+      pVerts[i] = { pos, defaultNormal, defaultUV };
+      pIndices[i] = (uint32_t)i;
+    }
+
+    vcPolygonModel_Destroy(&m_pPolyModel);
+    vcPolygonModel_CreateFromRawVertexData(&m_pPolyModel, pVerts, numPoints, vcP3N3UV2VertexLayout, (int)(udLengthOf(vcP3N3UV2VertexLayout)), pIndices, numPoints);
+
+    m_pPolyModel->modelOffset = udDouble4x4::translation(m_line.pPoints[0]);
+
+    udFree(pVerts);
+    udFree(pIndices);
 
     /*
     udDouble3 min = m_line.pPoints[0];

@@ -144,7 +144,12 @@ udResult vcWaterRenderer_Destroy(vcWaterRenderer **ppWaterRenderer)
   return udR_Success;
 }
 
-udResult vcWaterRenderer_AddVolume(vcWaterRenderer *pWaterRenderer, const udGeoZone &geoZone, double altitude, udDouble3 *pPoints, size_t pointCount, const std::vector< std::pair<const udDouble3 *, size_t> > &islandPoints)
+udResult vcWaterRenderer_AddVolume(vcWaterRenderer *pWaterRenderer,
+  const udGeoZone &geoZone,
+  double altitude,
+  udDouble3 *pPoints,
+  size_t pointCount,
+  const std::vector< std::pair<const udDouble3 *, size_t> > &islandPoints)
 {
   udResult result;
 

@@ -1250,83 +1250,58 @@ void vcPOI::GenerateLineFillPolygon()
 {
   if (m_line.numPoints >= 3)
   {
+    // This currently uses the z direction for the delaunay algorithm (this is a 2D algorithm)
+    // You need to rotate "m_line.pPoints" before passing them into vcCDT_ProcessOrignal
+    // so that they are flat with the world surface
+    // This assumes the common usage of area measurements are not vertical, otherwise this
+    // entire method could produce strange results.
+    // Remove this comment when fixed!
+    udFloat3 defaultNormal = udFloat3::create(0.0f, 0.0f, 1.0f);
+    udFloat2 defaultUV = udFloat2::create(0.0f, 0.0f);
     udDouble2 min, max;
     std::vector<udDouble2> trianglePointList;
 
     vcCDT_ProcessOrignal(m_line.pPoints, m_line.numPoints, std::vector< std::pair<const udDouble3 *, size_t> >(), min, max, &trianglePointList);
-
+    
     int numPoints = (int)trianglePointList.size();
 
     vcP3N3UV2Vertex *pVerts = udAllocType(vcP3N3UV2Vertex, numPoints, udAF_Zero);
     uint32_t *pIndices = udAllocType(uint32_t, numPoints, udAF_Zero);
 
-    udFloat3 defaultNormal = udFloat3::create(0.0f, 0.0f, 1.0f);
-    udFloat2 defaultUV = udFloat2::create(0.0f, 0.0f);
-
-    udFloat3 offset = udFloat3::create(m_line.pPoints[0]);
-    
     for (int64_t i = 0; i < (int64_t)trianglePointList.size(); ++i)
     {
-      udFloat3 pos = udFloat3::create((float)trianglePointList[i].x, (float)trianglePointList[i].y, 0) + offset;
-
+      udFloat3 pos = udFloat3::create((float)trianglePointList[i].x, (float)trianglePointList[i].y, 0);
       pVerts[i] = { pos, defaultNormal, defaultUV };
       pIndices[i] = (uint32_t)i;
     }
 
-    vcPolygonModel_Destroy(&m_pPolyModel);
-    vcPolygonModel_CreateFromRawVertexData(&m_pPolyModel, pVerts, numPoints, vcP3N3UV2VertexLayout, (int)(udLengthOf(vcP3N3UV2VertexLayout)), pIndices, numPoints);
-
-    m_pPolyModel->modelOffset = udDouble4x4::translation(m_line.pPoints[0]);
-
-    udFree(pVerts);
-    udFree(pIndices);
-
-    /*
-    udDouble3 min = m_line.pPoints[0];
-    udDouble3 max = m_line.pPoints[0];
-
-    for (int pointIndex = 1; pointIndex < m_line.numPoints; ++pointIndex)
-      for (int xyz = 0; xyz < 3; ++xyz)
+    // Un-flatten 2D Result
+    for (int64_t i = 0; i < (int64_t)trianglePointList.size(); ++i)
+    {
+      double closestDist = FLT_MAX;
+      float closestZ = 0;
+      for (int64_t pointIndex = 0; pointIndex < m_line.numPoints; ++pointIndex)
       {
-        min[xyz] = udMin(min[xyz], m_line.pPoints[pointIndex][xyz]);
-        max[xyz] = udMax(max[xyz], m_line.pPoints[pointIndex][xyz]);
+        udDouble2 pos = (m_line.pPoints[pointIndex] - m_line.pPoints[0]).toVector2();
+
+        double dist = udMag2<double>(pos - trianglePointList[i]);
+        if (dist < closestDist)
+        {
+          closestDist = dist;
+          closestZ = (float)(m_line.pPoints[pointIndex].z - m_line.pPoints[0].z);
+        }
       }
 
-    udFloat3 center = udFloat3::create((min + max) / 2.0 - m_line.pPoints[0]);
-
-    // Add triangle(s)
-    int numVerts = m_line.numPoints + 1;
-    int numIndices = m_line.numPoints * 3;
-
-    vcP3N3UV2Vertex *pVerts = udAllocType(vcP3N3UV2Vertex, numVerts, udAF_Zero);
-    uint32_t *pIndices = udAllocType(uint32_t, numIndices, udAF_Zero);
-
-    udFloat3 defaultNormal = udFloat3::create(0.0f, 0.0f, 1.0f);
-    udFloat2 defaultUV = udFloat2::create(0.0f, 0.0f);
-
-    pVerts[0] = { center, defaultNormal, defaultUV };
-    for (int i = 0; i < m_line.numPoints; ++i)
-      pVerts[i + 1] = { udFloat3::create(m_line.pPoints[i] - m_line.pPoints[0]), defaultNormal, defaultUV };
-
-    for (int i = 0; i < m_line.numPoints; ++i)
-    {
-      int indicesIndex = i * 3;
-      pIndices[indicesIndex + 0] = 0; // center
-      pIndices[indicesIndex + 1] = i + 1;
-      pIndices[indicesIndex + 2] = i + 2;
+      pVerts[i].position.z = closestZ;
     }
 
-    // Wrap last triangle around to first vertex
-    pIndices[m_line.numPoints * 3 - 1] = 1;
-
     vcPolygonModel_Destroy(&m_pPolyModel);
-    vcPolygonModel_CreateFromRawVertexData(&m_pPolyModel, pVerts, numVerts, vcP3N3UV2VertexLayout, (int)(udLengthOf(vcP3N3UV2VertexLayout)), pIndices, numIndices);
-
+    vcPolygonModel_CreateFromRawVertexData(&m_pPolyModel, pVerts, numPoints, vcP3N3UV2VertexLayout, (int)(udLengthOf(vcP3N3UV2VertexLayout)), pIndices, numPoints);
+    
     m_pPolyModel->modelOffset = udDouble4x4::translation(m_line.pPoints[0]);
 
     udFree(pVerts);
     udFree(pIndices);
-    */
   }
 }
 
